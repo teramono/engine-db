@@ -8,7 +8,7 @@ import (
 // DBServer ...
 type DBServer struct {
 	setup setup.Setup
-	dbs   []DB
+	// dbs   []DBInfo // Not scalable
 }
 
 // NewDBServer ...
@@ -22,8 +22,7 @@ func NewDBServer(setup setup.Setup) (DBServer, error) {
 func (server *DBServer) Listen() error {
 	router := gin.Default()
 
-	// Use GRPC instead.
-	router.POST("/", func(c *gin.Context) {})
+	router.POST("/query", server.Query)
 
-	return router.Run()
+	return router.Run(":5053") // TODO: Get from setup.Config
 }

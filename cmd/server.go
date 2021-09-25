@@ -9,13 +9,13 @@ import (
 
 func main() {
 	// ...
-	setup, err := setup.NewSetup(false)
+	setup, err := setup.NewSetup()
 	if err != nil {
 		log.Fatalln(err)
 	}
 
 	// ...
-	server, err := engine.NewFSServer(setup)
+	server, err := engine.NewDBServer(setup)
 	if err != nil {
 		log.Fatalln(err)
 	}
