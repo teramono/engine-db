@@ -7,22 +7,24 @@ import (
 	"github.com/teramono/utilities/pkg/setup"
 )
 
-// TODO:
-const Port = 5051
-const PGURI = ""
-
 func main() {
-	// ...
+	// Establish common setup.
 	setup, err := setup.NewCommonSetup()
 	if err != nil {
-		log.Fatalln(err)
+		log.Panic(err)
 	}
 
-	// ...
-	server, err := server.NewDBServer(setup, PGURI, Port)
+	// Create server.
+	server, err := server.NewDBServer(setup)
 	if err != nil {
-		log.Fatalln(err)
+		log.Panic(err)
 	}
 
-	server.Listen()
+	defer server.BrokerClient.Close()
+
+	// Activate subscriptions.
+	err = server.ActivateSubscriptions()
+	if err != nil {
+		log.Panic(err)
+	}
 }

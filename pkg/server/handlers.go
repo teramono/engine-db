@@ -1,13 +1,8 @@
 package server
 
 import (
-	"net/http"
-
-	"github.com/gin-gonic/gin"
+	"github.com/nats-io/nats.go"
 )
 
-func (server *DBServer) Query(ctx *gin.Context) {
-	ctx.JSON(http.StatusOK, gin.H{ //
-		"message": "Query running...",
-	})
+func (server *DBServer) Query(msg *nats.Msg) {
 }

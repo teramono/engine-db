@@ -3,39 +3,54 @@ package server
 import (
 	"fmt"
 
-	"github.com/gin-gonic/gin"
 	"github.com/go-pg/pg/v10"
+	"github.com/nats-io/nats.go"
 	"github.com/teramono/utilities/pkg/broker"
 	"github.com/teramono/utilities/pkg/setup"
 )
 
-// TODO:
-const ConstPort = ":5052"
-
-// DBServer ...
 type DBServer struct {
 	setup.CommonSetup
-	backends []broker.Address
-	pgURI    string
-	pgConn   pg.Conn
-	port     uint
+	DB *pg.DB
 }
 
-// NewDBServer ...
-func NewDBServer(setup setup.CommonSetup, pgURI string, port uint) (DBServer, error) {
-	// TODO: Create and connect database
+func NewDBServer(setup setup.CommonSetup) (DBServer, error) {
+	opts, err := pg.ParseURL(setup.Config.Engines.DB.DBURL)
+	if err != nil {
+		return DBServer{}, err
+	}
+
+	db := pg.Connect(opts)
+
 	return DBServer{
 		CommonSetup: setup,
-		pgURI: pgURI,
-		port:  port,
+		DB:          db,
 	}, nil
 }
 
-// Listen ...
-func (server *DBServer) Listen() error {
-	router := gin.Default()
+func (server *DBServer) LogsVersion() uint {
+	return server.Config.Broker.Subscriptions.Logs.Version
+}
 
-	router.POST("/query", server.Query)
+func (server *DBServer) ActivateSubscriptions() error {
+	// Create channels for subscribed subjects.
+	queryCh := make(chan *nats.Msg, server.BrokerClient.Opts.SubChanLen)
+	querySub, err := server.BrokerClient.ChanQueueSubscribe(
+		broker.GetWorkspacesSubjectByEngine(broker.EngineDB, &server.Config, "query"),
+		broker.GetWorkspacesResponderGroupByEngine(broker.EngineDB, &server.Config, "query"),
+		queryCh,
+	)
+	if err != nil {
+		return err
+	}
 
-	return router.Run(fmt.Sprintf(":%d", server.port))
+	defer querySub.Unsubscribe()
+	fmt.Println(">> Subscriptions set up!")
+
+	// Listen to subscribed messages.
+	for msg := range queryCh {
+		go broker.PanicWrap(msg, server.Query)
+	}
+
+	return nil
 }
